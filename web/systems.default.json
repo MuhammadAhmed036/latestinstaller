@@ -1,0 +1,966 @@
+{
+  "systems": [
+    {
+      "id": "intellivision-dashboard",
+      "name": "Intellivision Dashboard",
+      "tab": "Website",
+      "description": "Website / dashboard stack (nginx gateway + containers), installed to /opt/intellivision_dashboard.",
+      "match": "^intellivision-dashboard_",
+      "entry": [
+        "install.sh",
+        "deploy.sh"
+      ],
+      "installDir": "/opt/intellivision_dashboard",
+      "ctl": "/opt/intellivision_dashboard/dashboard-ctl",
+      "envFile": "/opt/intellivision_dashboard/.env",
+      "envUpdateCmd": "env-update",
+      "ctlCommands": [
+        {
+          "cmd": "status",
+          "label": "Status",
+          "hint": "Container and service health"
+        },
+        {
+          "cmd": "logs",
+          "label": "Logs",
+          "hint": "Recent logs (10 s capture)",
+          "timeout": 10
+        },
+        {
+          "cmd": "restart",
+          "label": "Restart",
+          "hint": "Restart all containers",
+          "danger": true
+        },
+        {
+          "cmd": "backup",
+          "label": "Backup",
+          "hint": "Create a backup snapshot"
+        },
+        {
+          "cmd": "env-update",
+          "label": "Apply .env",
+          "hint": "Push .env changes to containers",
+          "danger": true
+        },
+        {
+          "cmd": "rollback",
+          "label": "Rollback",
+          "hint": "Return to the previous release",
+          "danger": true
+        }
+      ],
+      "detect": [
+        "dashboard-ctl"
+      ],
+      "entryArgs": [
+        "-y"
+      ],
+      "inputMode": "args",
+      "ownContainer": [
+        "intellivision_dashboard"
+      ],
+      "reservedPorts": [
+        3000,
+        8090,
+        8092,
+        8000,
+        8554,
+        8889,
+        8189,
+        8080,
+        4222,
+        8222,
+        9000,
+        9500,
+        18088,
+        18090,
+        15432
+      ],
+      "fields": [
+        {
+          "key": "port",
+          "label": "Dashboard port",
+          "kind": "port",
+          "envKey": "APP_PORT",
+          "default": "3001",
+          "flag": "--port",
+          "argIfChanged": true,
+          "hint": "The one port you open in the browser. Not 3000, 8090 or 8092 (internal) and not another module's port."
+        },
+        {
+          "key": "tls",
+          "label": "HTTPS",
+          "kind": "select",
+          "default": "--http",
+          "asArg": true,
+          "options": [
+            {
+              "value": "--http",
+              "label": "Plain HTTP",
+              "hint": "Simplest. Use on a trusted network."
+            },
+            {
+              "value": "--https",
+              "label": "HTTPS with a self-signed certificate",
+              "hint": "Made on this VM for its IP. Browsers ask you to accept it once."
+            }
+          ]
+        },
+        {
+          "key": "tz",
+          "label": "Time zone",
+          "kind": "text",
+          "default": "Asia/Karachi",
+          "flag": "--timezone",
+          "optional": true,
+          "hint": "IANA name, e.g. Asia/Karachi",
+          "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)+$",
+          "patternMsg": "An IANA zone like Asia/Karachi"
+        }
+      ]
+    },
+    {
+      "id": "gelecek-streaming-server",
+      "name": "Streaming Server",
+      "tab": "Streaming Server",
+      "description": "GELECEK Streaming Server v2 (MediaMTX + web control), installed to /opt/gelecek_streaming_server_v2.",
+      "match": "^gelecek_streaming_server",
+      "entry": [
+        "deploy.sh",
+        "install.sh"
+      ],
+      "installDir": "/opt/gelecek_streaming_server_v2",
+      "ctl": "/usr/local/bin/gelecek-ctl",
+      "envFile": "/opt/gelecek_streaming_server_v2/.env",
+      "envUpdateCmd": "restart",
+      "ownContainer": "gelecek-streaming-server-v2",
+      "reservedPorts": [
+        9997,
+        18554,
+        18889
+      ],
+      "fields": [
+        {
+          "key": "host",
+          "label": "Server address",
+          "kind": "text",
+          "envKey": "PUBLIC_HOST",
+          "default": "@host-ip",
+          "hint": "IP or DNS name viewers use to reach this server",
+          "pattern": "^[A-Za-z0-9.,:_-]+$",
+          "patternMsg": "Letters, digits and . , : _ - only",
+          "wide": true
+        },
+        {
+          "key": "web",
+          "label": "Web UI / API port",
+          "kind": "port",
+          "envKey": "WEBCTL_PORT",
+          "default": "8000",
+          "hint": "TCP"
+        },
+        {
+          "key": "rtsp",
+          "label": "RTSP port",
+          "kind": "port",
+          "envKey": "MTXCTL_PORT",
+          "default": "8554",
+          "hint": "TCP"
+        },
+        {
+          "key": "whep",
+          "label": "WebRTC / WHEP port",
+          "kind": "port",
+          "envKey": "WHEP_PORT",
+          "default": "8889",
+          "hint": "TCP"
+        },
+        {
+          "key": "ice",
+          "label": "WebRTC media port",
+          "kind": "port",
+          "envKey": "WEBRTC_ICE_PORT",
+          "default": "8189",
+          "hint": "UDP and TCP"
+        },
+        {
+          "key": "user",
+          "label": "API username (not the browser login)",
+          "kind": "text",
+          "envKey": "ROOT_USER",
+          "default": "admin",
+          "hint": "HTTP Basic login for scripts and API clients only. The web page login is separate: admin / admin on a fresh install.",
+          "pattern": "^[A-Za-z0-9._-]+$",
+          "patternMsg": "Letters, digits and . _ - only"
+        },
+        {
+          "key": "pass",
+          "label": "API password (not the browser login)",
+          "kind": "password",
+          "optional": true,
+          "hint": "Leave empty to keep the current one, or to generate one on a fresh install",
+          "pattern": "^[A-Za-z0-9._@%+=:,-]{8,}$",
+          "patternMsg": "At least 8 characters: letters, digits and . _ @ % + = : , -"
+        }
+      ],
+      "stdinAfter": [
+        "y"
+      ],
+      "ctlCommands": [
+        {
+          "cmd": "status",
+          "label": "Status",
+          "hint": "Container state"
+        },
+        {
+          "cmd": "health",
+          "label": "Health",
+          "hint": "Ask the server API if it is answering"
+        },
+        {
+          "cmd": "logs",
+          "label": "Logs",
+          "hint": "Recent logs (10 s capture)",
+          "timeout": 10
+        },
+        {
+          "cmd": "restart",
+          "label": "Restart",
+          "hint": "Restart the container",
+          "danger": true
+        },
+        {
+          "cmd": "start",
+          "label": "Start",
+          "hint": "Start the stack"
+        },
+        {
+          "cmd": "stop",
+          "label": "Stop",
+          "hint": "Stop the stack",
+          "danger": true
+        },
+        {
+          "cmd": "update",
+          "label": "Recreate",
+          "hint": "Recreate containers from the loaded image",
+          "danger": true
+        },
+        {
+          "cmd": "verify",
+          "label": "Verify",
+          "hint": "Run the bundled deployment self-check"
+        },
+        {
+          "cmd": "users",
+          "label": "Web users",
+          "hint": "List the web UI accounts (browser login)",
+          "run": "C=$(docker ps --format '{{.Names}}' | grep -m1 gelecek-streaming-server); [ -n \"$C\" ] || { echo \"streaming server container not running\"; exit 1; }; docker exec \"$C\" python3 /usr/local/bin/useradmin.py list"
+        },
+        {
+          "cmd": "unlock",
+          "label": "Unlock admin",
+          "hint": "Clear a lockout after too many wrong passwords",
+          "danger": true,
+          "run": "C=$(docker ps --format '{{.Names}}' | grep -m1 gelecek-streaming-server); [ -n \"$C\" ] || { echo \"streaming server container not running\"; exit 1; }; docker exec \"$C\" python3 /usr/local/bin/useradmin.py unlock admin"
+        }
+      ],
+      "detect": [
+        "bin/gelecek-ctl",
+        "compose/docker-compose.yml"
+      ],
+      "cwd": "/opt/gelecek_streaming_server_v2",
+      "loginHint": {
+        "title": "Login hint: Streaming Server web page",
+        "lines": [
+          "Browser login on a fresh install: admin / admin (you must choose a new password straight away).",
+          "The API user/password from the deploy log is for scripts only, not for the browser."
+        ]
+      }
+    },
+    {
+      "id": "natv2",
+      "name": "NATv2",
+      "tab": "NATS",
+      "description": "NATv2 camera frame orchestration: NATS JetStream, sandbox web UI + API and receivers (Docker Compose).",
+      "match": "^natv2-offline",
+      "entry": [
+        "install.sh"
+      ],
+      "entryArgs": [
+        "--yes"
+      ],
+      "inputMode": "envfile",
+      "stageDir": "/opt/natv2",
+      "cwd": "/opt/natv2",
+      "installDir": "/opt/natv2",
+      "envFile": "/opt/natv2/.env",
+      "envUpdateCmd": "apply",
+      "ownContainer": [
+        "nats-jetstream",
+        "natv2-"
+      ],
+      "fields": [
+        {
+          "key": "host",
+          "label": "Server address",
+          "kind": "text",
+          "envKey": "API_HOST",
+          "default": "@host-ip",
+          "hint": "IP that cameras and receivers use to reach this server",
+          "pattern": "^[A-Za-z0-9.:_-]+$",
+          "patternMsg": "Letters, digits and . : _ - only",
+          "wide": true
+        },
+        {
+          "key": "token",
+          "label": "NATS auth token",
+          "kind": "text",
+          "envKey": "NATS_AUTH_TOKEN",
+          "default": "@token",
+          "hint": "Senders need it. Must start with a letter; letters, digits, - and _ only",
+          "pattern": "^[A-Za-z][A-Za-z0-9_-]*$",
+          "patternMsg": "Start with a letter; letters, digits, - and _ only",
+          "wide": true
+        },
+        {
+          "key": "natsPort",
+          "label": "NATS client port",
+          "kind": "port",
+          "envKey": "NATS_CLIENT_PORT",
+          "default": "4222",
+          "hint": "TCP"
+        },
+        {
+          "key": "natsHttp",
+          "label": "NATS monitoring port",
+          "kind": "port",
+          "envKey": "NATS_HTTP_PORT",
+          "default": "8222",
+          "hint": "TCP"
+        },
+        {
+          "key": "api",
+          "label": "Web UI / API port",
+          "kind": "port",
+          "envKey": "API_PORT",
+          "default": "9000",
+          "hint": "TCP"
+        },
+        {
+          "key": "qgroup",
+          "label": "Receiver queue group",
+          "kind": "text",
+          "envKey": "QUEUE_GROUP",
+          "default": "frame_workers",
+          "hint": "Receivers in the same group share the frames",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "patternMsg": "Letters, digits, - and _ only"
+        },
+        {
+          "key": "replicas",
+          "label": "Receiver containers",
+          "kind": "text",
+          "envKey": "RECEIVER_REPLICAS",
+          "default": "2",
+          "hint": "How many receivers to start (1 to 99)",
+          "pattern": "^[1-9][0-9]?$",
+          "patternMsg": "A number from 1 to 99"
+        }
+      ],
+      "ctlCommands": [
+        {
+          "cmd": "status",
+          "label": "Status",
+          "hint": "All containers of the stack",
+          "run": "docker compose --profile full ps"
+        },
+        {
+          "cmd": "health",
+          "label": "Health",
+          "hint": "Ask the sandbox API if it is answering",
+          "run": "docker compose exec -T sandbox curl -sf http://localhost:9000/api/status; echo"
+        },
+        {
+          "cmd": "receivers",
+          "label": "Receivers",
+          "hint": "Receiver heartbeats seen by the API",
+          "run": "docker compose exec -T sandbox curl -sf http://localhost:9000/api/receivers; echo"
+        },
+        {
+          "cmd": "logs",
+          "label": "Logs",
+          "hint": "Last 120 lines of every service",
+          "run": "docker compose --profile full logs --tail 120 --no-color"
+        },
+        {
+          "cmd": "start",
+          "label": "Start",
+          "hint": "Start the stack",
+          "run": "docker compose --profile receivers up -d --no-build --pull never"
+        },
+        {
+          "cmd": "restart",
+          "label": "Restart",
+          "hint": "Restart all containers",
+          "danger": true,
+          "run": "docker compose --profile full restart"
+        },
+        {
+          "cmd": "stop",
+          "label": "Stop",
+          "hint": "Stop the stack (data volume is kept)",
+          "danger": true,
+          "run": "docker compose --profile full stop"
+        },
+        {
+          "cmd": "apply",
+          "label": "Apply .env",
+          "hint": "Recreate containers after editing .env",
+          "danger": true,
+          "run": "docker compose --profile receivers up -d --force-recreate --no-build --pull never"
+        }
+      ],
+      "detect": [
+        "sandbox_app.py",
+        "receiver.py",
+        "docker-compose.yml"
+      ]
+    },
+    {
+      "id": "rtsp-engine",
+      "name": "RTSP Engine",
+      "tab": "RTSP Engine",
+      "description": "RTSP snapshot engine (Go, Docker) with web UI. Publishes camera frames to NATS.",
+      "match": "^rtsp-engine_",
+      "entry": [
+        "deploy.sh"
+      ],
+      "entryArgs": [
+        "--interactive"
+      ],
+      "stageDir": "/opt/rtsp-engine",
+      "cwd": "/opt/rtsp-engine",
+      "installDir": "/opt/rtsp-engine",
+      "envFile": "/opt/rtsp-engine/.env",
+      "envUpdateCmd": "apply",
+      "ownContainer": [
+        "rtsp-engine",
+        "rtsp-nats"
+      ],
+      "dockerPrompt": "y",
+      "stdinAfter": [
+        "y"
+      ],
+      "fields": [
+        {
+          "key": "web",
+          "label": "Web UI port",
+          "kind": "port",
+          "envKey": "HOST_PORT",
+          "default": "8080",
+          "hint": "The port you open in the browser"
+        },
+        {
+          "key": "natsMode",
+          "label": "NATS (where frames are published)",
+          "kind": "select",
+          "skipIfEnv": "NATS_URL",
+          "default": "3",
+          "options": [
+            {
+              "value": "1",
+              "label": "Use a NATS server I already have",
+              "hint": "JetStream must be enabled. Enter its address below."
+            },
+            {
+              "value": "2",
+              "label": "Install NATS on this machine",
+              "hint": "Uses the NATS image bundled in the package."
+            },
+            {
+              "value": "3",
+              "label": "Skip for now",
+              "hint": "Enter the NATS details later in the engine web UI."
+            }
+          ]
+        },
+        {
+          "key": "natsHost",
+          "label": "NATS host / IP",
+          "kind": "text",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "1"
+              ]
+            }
+          ],
+          "hint": "Not localhost: the engine runs in a container",
+          "pattern": "^(?!localhost$|127\\.|::1$)[A-Za-z0-9._:-]+$",
+          "patternMsg": "Use the LAN IP or a hostname, not localhost"
+        },
+        {
+          "key": "natsPort",
+          "label": "NATS port",
+          "kind": "text",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "1"
+              ]
+            }
+          ],
+          "default": "4222",
+          "pattern": "^[0-9]{1,5}$",
+          "patternMsg": "A port number"
+        },
+        {
+          "key": "natsUser",
+          "label": "NATS username or token",
+          "kind": "text",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "1"
+              ]
+            }
+          ],
+          "optional": true,
+          "hint": "A username alone is treated as a token"
+        },
+        {
+          "key": "natsPass",
+          "label": "NATS password",
+          "kind": "password",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "1"
+              ]
+            },
+            {
+              "key": "natsUser",
+              "notEmpty": true
+            }
+          ],
+          "optional": true,
+          "placeholder": "Leave empty if the value above is a token"
+        },
+        {
+          "key": "natsClientPort",
+          "label": "NATS client port",
+          "kind": "port",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "2"
+              ]
+            }
+          ],
+          "default": "4222",
+          "hint": "TCP, published on this machine"
+        },
+        {
+          "key": "natsMonPort",
+          "label": "NATS monitoring port",
+          "kind": "port",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "2"
+              ]
+            }
+          ],
+          "default": "8222",
+          "hint": "TCP, localhost only"
+        },
+        {
+          "key": "lanIp",
+          "label": "This machine's LAN IP",
+          "kind": "text",
+          "when": [
+            {
+              "key": "natsMode",
+              "in": [
+                "2"
+              ]
+            }
+          ],
+          "default": "@host-ip",
+          "hint": "The engine reaches NATS through it",
+          "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$",
+          "patternMsg": "An IPv4 address, e.g. 192.168.18.50"
+        },
+        {
+          "key": "sourceIp",
+          "label": "This machine's IP (engine source)",
+          "kind": "text",
+          "envKey": "SOURCE_IP",
+          "default": "@host-ip",
+          "wide": true,
+          "hint": "The NATS hub identifies this engine by it (frames.v2.192_168_18_50...)",
+          "pattern": "^((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\\.){3}(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$",
+          "patternMsg": "An IPv4 address, e.g. 192.168.18.50"
+        },
+        {
+          "key": "tls",
+          "label": "HTTPS for the web UI",
+          "kind": "select",
+          "envKey": "TLS_MODE",
+          "envMap": {
+            "self-signed": "1",
+            "files": "2",
+            "off": "3"
+          },
+          "default": "1",
+          "options": [
+            {
+              "value": "1",
+              "label": "Self-signed certificate",
+              "hint": "Generated on this machine. Browsers ask you to accept it once."
+            },
+            {
+              "value": "2",
+              "label": "My own certificate files",
+              "hint": "PEM certificate and key that already exist on this VM."
+            },
+            {
+              "value": "3",
+              "label": "Off, plain HTTP",
+              "hint": "Only on a trusted, isolated network."
+            }
+          ]
+        },
+        {
+          "key": "certFile",
+          "label": "Certificate path (PEM, full chain)",
+          "kind": "text",
+          "when": [
+            {
+              "key": "tls",
+              "in": [
+                "2"
+              ]
+            }
+          ],
+          "hint": "Path on this VM",
+          "pattern": "^/[^\\s]+$",
+          "patternMsg": "An absolute path, e.g. /etc/ssl/engine.crt"
+        },
+        {
+          "key": "keyFile",
+          "label": "Private key path (PEM)",
+          "kind": "text",
+          "when": [
+            {
+              "key": "tls",
+              "in": [
+                "2"
+              ]
+            }
+          ],
+          "hint": "Path on this VM",
+          "pattern": "^/[^\\s]+$",
+          "patternMsg": "An absolute path, e.g. /etc/ssl/engine.key"
+        }
+      ],
+      "ctlCommands": [
+        {
+          "cmd": "status",
+          "label": "Status",
+          "hint": "Container, health and CPU/memory limits",
+          "run": "docker compose ps; echo; ./rtsp-engine-ctl status"
+        },
+        {
+          "cmd": "health",
+          "label": "Health",
+          "hint": "Ask the engine if it is answering",
+          "run": "curl -sf --noproxy \"*\" \"http://localhost:$(grep -E \"^HOST_PORT=\" .env | tail -1 | cut -d= -f2 | tr -d \"[:space:]\")/api/health\"; echo"
+        },
+        {
+          "cmd": "logs",
+          "label": "Logs",
+          "hint": "Last 120 log lines",
+          "run": "docker compose logs --tail 120 --no-color"
+        },
+        {
+          "cmd": "start",
+          "label": "Start",
+          "hint": "Start the engine",
+          "run": "docker compose up -d --no-build"
+        },
+        {
+          "cmd": "restart",
+          "label": "Restart",
+          "hint": "Restart the container",
+          "danger": true,
+          "run": "docker compose restart"
+        },
+        {
+          "cmd": "stop",
+          "label": "Stop",
+          "hint": "Stop it (data volumes are kept)",
+          "danger": true,
+          "run": "docker compose stop"
+        },
+        {
+          "cmd": "apply",
+          "label": "Apply .env",
+          "hint": "Recreate the container after editing .env",
+          "danger": true,
+          "run": "docker compose up -d --no-build --force-recreate"
+        },
+        {
+          "cmd": "users",
+          "label": "Web users",
+          "hint": "List the engine's accounts (browser login)",
+          "run": "C=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || { echo \"rtsp-engine container is not running\"; exit 1; }; docker exec \"$C\" /app/rtsp-engine admin list-users"
+        },
+        {
+          "cmd": "unlock",
+          "label": "Unlock admin",
+          "hint": "Clear a lockout after too many wrong passwords",
+          "danger": true,
+          "run": "C=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || { echo \"rtsp-engine container is not running\"; exit 1; }; docker exec \"$C\" /app/rtsp-engine admin unlock admin"
+        },
+        {
+          "cmd": "reset-admin",
+          "label": "Reset admin password",
+          "hint": "Sets a new random password and prints it in the log (must be changed at sign-in)",
+          "danger": true,
+          "run": "C=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || { echo \"rtsp-engine container is not running\"; exit 1; }; docker exec \"$C\" /app/rtsp-engine admin reset-password admin"
+        }
+      ],
+      "detect": [
+        "rtsp-engine-ctl",
+        "nats-deploy/docker-compose.yml"
+      ],
+      "postDeploy": "C=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || exit 0\necho \"Waiting for the engine to become healthy (up to 3 minutes)...\"\nok=0; for i in $(seq 1 90); do s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \"$C\" 2>/dev/null); [ \"$s\" = healthy ] && { ok=1; break; }; sleep 2; done\n[ \"$ok\" = 1 ] || { echo \"Engine is not healthy yet. Set the admin password later: Manage > Reset admin password\"; exit 0; }\nPW=$(od -An -N15 -tx1 /dev/urandom | tr -d ' \\n')\nR=$(printf '%s\\n' \"$PW\" | docker exec -i \"$C\" /app/rtsp-engine admin bootstrap --password-stdin 2>/dev/null | tail -1 || true)\ncase \"$R\" in created|set) echo \"Admin login : admin / $PW   (shown once, must be changed at the first sign-in)\";; unchanged) echo \"Admin account already set up, left as it is\";; *) echo \"Could not prepare the admin account. Use Manage > Reset admin password\";; esac",
+      "loginHint": {
+        "title": "Login hint: RTSP Engine web page",
+        "lines": [
+          "Username: admin. The password is printed at the end of the deploy log (\"Admin login : admin / ...\").",
+          "Lost it? Run this on the VM. It prints a one-time password and you must change it at the first sign-in:"
+        ],
+        "command": "sudo docker exec rtsp-engine /app/rtsp-engine admin reset-password admin"
+      }
+    },
+    {
+      "id": "inference-engine",
+      "name": "Inference Engine",
+      "tab": "Inference Engine",
+      "description": "SafeCity Stage 2 detection stack: NATS, OpenVINO worker, PostgreSQL, dashboard and configurator.",
+      "match": "^safecity_stage2_worker",
+      "entry": [
+        "deploy.sh",
+        "install.sh"
+      ],
+      "installDir": "/opt/safecity_stage2_worker",
+      "envFile": "/opt/safecity_stage2_worker/.env",
+      "envUpdateCmd": "update",
+      "ctl": "/usr/local/bin/stage2-ctl",
+      "ownContainer": [
+        "yolo_"
+      ],
+      "stdinAfter": [
+        "y"
+      ],
+      "fields": [
+        {
+          "key": "host",
+          "label": "Server address",
+          "kind": "text",
+          "default": "@host-ip",
+          "wide": true,
+          "optional": true,
+          "hint": "Only used for the URLs printed at the end",
+          "pattern": "^[A-Za-z0-9.:_<>-]+$",
+          "patternMsg": "Letters, digits and . : _ - only"
+        },
+        {
+          "key": "natsUrl",
+          "label": "NATS URL",
+          "kind": "text",
+          "envKey": "NATS_URL",
+          "ignoreValues": [
+            "nats://root@192.168.18.106:4222"
+          ],
+          "wide": true,
+          "hint": "Where the worker reads camera frames from: nats://[user[:pass]@]host:port",
+          "pattern": "^(nats|tls|ws|wss)://[^\\s]{1,480}$",
+          "patternMsg": "A URL like nats://10.0.0.5:4222"
+        },
+        {
+          "key": "subject",
+          "label": "Frame subject",
+          "kind": "text",
+          "envKey": "NATS_SUBJECT",
+          "default": "frames.v2.>",
+          "hint": "Must start with frames.v2.",
+          "pattern": "^frames\\.v2[.>][^\\s]{0,480}$",
+          "patternMsg": "Must start with frames.v2."
+        },
+        {
+          "key": "queue",
+          "label": "Queue group",
+          "kind": "text",
+          "envKey": "NATS_QUEUE",
+          "default": "stage2_yolo_test",
+          "optional": true,
+          "hint": "Workers in the same group share the frames",
+          "pattern": "^[A-Za-z0-9._-]*$",
+          "patternMsg": "Letters, digits and . _ - only"
+        },
+        {
+          "key": "mode",
+          "label": "Starting detection classes",
+          "kind": "select",
+          "envKey": "DETECTION_RULES",
+          "default": "person",
+          "envMap": {
+            "/app/config/detection_rules.person.json": "person",
+            "/app/config/detection_rules.vehicle.json": "vehicle"
+          },
+          "skipIfFile": "/opt/safecity_stage2_worker/data/stage2_config/active.json",
+          "skipNote": "managed from the configurator (a model and classes were already applied there), unchanged here.",
+          "options": [
+            {
+              "value": "person",
+              "label": "Person",
+              "hint": "More classes can be chosen later in the configurator."
+            },
+            {
+              "value": "vehicle",
+              "label": "Vehicle",
+              "hint": "More classes can be chosen later in the configurator."
+            }
+          ]
+        },
+        {
+          "key": "dash",
+          "label": "Dashboard port",
+          "kind": "port",
+          "envKey": "DASHBOARD_PORT",
+          "default": "18088",
+          "hint": "TCP"
+        },
+        {
+          "key": "cfg",
+          "label": "Configurator (admin) port",
+          "kind": "port",
+          "envKey": "CONFIGURATOR_PORT",
+          "default": "18090",
+          "hint": "TCP"
+        },
+        {
+          "key": "pg",
+          "label": "PostgreSQL external port",
+          "kind": "port",
+          "envKey": "POSTGRES_PUBLIC_PORT",
+          "default": "15432",
+          "hint": "TCP"
+        },
+        {
+          "key": "pgPass",
+          "label": "PostgreSQL password",
+          "kind": "password",
+          "optional": true,
+          "skipIfFile": "/opt/safecity_stage2_worker/data/postgres/PG_VERSION",
+          "skipNote": "the database is already initialised, so its password cannot be changed here. The current one is kept.",
+          "hint": "Leave empty to keep the current one, or to generate one on a fresh install",
+          "pattern": "^[A-Za-z0-9._@%+:,-]{8,}$",
+          "patternMsg": "At least 8 characters: letters, digits and . _ @ % + : , -"
+        },
+        {
+          "key": "adminUser",
+          "label": "Configurator admin username",
+          "kind": "text",
+          "default": "admin",
+          "prefillFile": {
+            "path": "/opt/safecity_stage2_worker/data/stage2_config/admin.json",
+            "regex": "\"user\": *\"([^\"]*)\""
+          },
+          "hint": "Login of the admin page (models, classes, metrics)",
+          "pattern": "^[A-Za-z0-9._-]{1,64}$",
+          "patternMsg": "Letters, digits and . _ - only (max 64)"
+        },
+        {
+          "key": "adminPass",
+          "label": "Configurator admin password",
+          "kind": "password",
+          "optional": true,
+          "hint": "Leave empty to keep the current one, or to generate one on a fresh install",
+          "pattern": "^.{8,}$",
+          "patternMsg": "At least 8 characters"
+        }
+      ],
+      "ctlCommands": [
+        {
+          "cmd": "status",
+          "label": "Status",
+          "hint": "Containers of the stack"
+        },
+        {
+          "cmd": "health",
+          "label": "Health",
+          "hint": "Database, dashboard, worker, retention and configurator"
+        },
+        {
+          "cmd": "logs",
+          "label": "Logs",
+          "hint": "Recent logs (10 s capture)",
+          "timeout": 10
+        },
+        {
+          "cmd": "restart",
+          "label": "Restart",
+          "hint": "Restart containers (does not re-read .env)",
+          "danger": true
+        },
+        {
+          "cmd": "update",
+          "label": "Apply .env",
+          "hint": "Recreate containers so .env changes take effect",
+          "danger": true
+        },
+        {
+          "cmd": "start",
+          "label": "Start",
+          "hint": "Start the stack"
+        },
+        {
+          "cmd": "stop",
+          "label": "Stop",
+          "hint": "Stop the stack (data is kept)",
+          "danger": true
+        },
+        {
+          "cmd": "verify",
+          "label": "Verify",
+          "hint": "Health check plus container list"
+        }
+      ],
+      "detect": [
+        "bin/stage2-ctl",
+        "compose/pick_ports.py"
+      ],
+      "loginHint": {
+        "title": "Login hint: Configurator (port 18090)",
+        "lines": [
+          "Open the Configurator at http://<VM IP>:18090 (the port ending in 90).",
+          "Username: admin, unless you chose another one in the form.",
+          "Password: if you left the password empty at deploy, one was generated and shown once in the deploy log. Run this command on the VM to print it:"
+        ],
+        "command": "sudo grep -h \"Admin login\" /opt/intellivision-installer/logs/*.log | tail -1"
+      }
+    }
+  ]
+}

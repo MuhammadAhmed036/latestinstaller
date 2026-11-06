@@ -1,0 +1,21 @@
+name: intellivision-installer
+
+services:
+  installer:
+    image: intellivision-installer:${INSTALLER_VERSION:-1.0.0}
+    container_name: intellivision-installer
+    restart: unless-stopped
+    # The installer must run bundle install scripts on the VM itself (as root).
+    # It does so through nsenter into the host's PID 1 namespaces, hence privileged + pid: host.
+    # Access is protected by INSTALLER_TOKEN – never expose this port to the public internet.
+    privileged: true
+    pid: host
+    ports:
+      - "${INSTALLER_BIND:-0.0.0.0}:${INSTALLER_PORT:-8088}:3000"
+    env_file: .env
+    environment:
+      INSTALLER_BASE_DIR: /opt/intellivision-installer
+    volumes:
+      - /opt/intellivision-installer/packages:/opt/intellivision-installer/packages
+      - /opt/intellivision-installer/logs:/opt/intellivision-installer/logs
+      - /opt/intellivision-installer/data:/opt/intellivision-installer/data

@@ -1,0 +1,14 @@
+#!/bin/bash
+echo "docker $*" >> /tmp/docker.log
+case "$1" in
+  info) case "$*" in *--format*) echo x86_64;; esac; exit 0 ;;
+  compose) case "$2" in version) echo v2; exit 0;; *) echo "[stub] docker compose $*"; exit 0;; esac ;;
+  container) exit 1 ;;
+  ps) case "$*" in *--format*) echo "rtsp-engine";; esac; exit 0 ;;
+  port|logs) exit 0 ;;
+  image|load) exit 0 ;;
+  inspect) echo healthy; exit 0 ;;
+  exec) IN=$(cat); echo "exec: $* <<< ${IN:+[stdin]}" >> /tmp/docker.log; case "$*" in *bootstrap*) echo set;; *list-users*) echo "admin  admin  initial";; *reset-password*) echo "One-time password: abc123";; *) echo created;; esac; exit 0 ;;
+  --version) echo "Docker version 29 stub"; exit 0 ;;
+esac
+exit 0

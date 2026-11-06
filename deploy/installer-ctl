@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# installer-ctl – control the VM Installer container. Works fully offline.
+set -Eeuo pipefail
+BASE=/opt/intellivision-installer
+CNAME=intellivision-installer
+cd "$BASE" 2>/dev/null || { echo "installer is not installed ($BASE missing)" >&2; exit 1; }
+
+DC="docker compose"
+need_root() { [ "$(id -u)" -eq 0 ] || { echo "run with sudo" >&2; exit 1; }; }
+getv() { grep -E "^$1=" "$BASE/.env" | head -n1 | cut -d= -f2-; }
+health() { docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$CNAME" 2>/dev/null || echo "not running"; }
+
+case "${1:-help}" in
+  status)
+    $DC ps
+    echo
+    echo "URL:    http://$(hostname -I | awk '{print $1}'):$(getv INSTALLER_PORT)"
+    echo "Health: $(health)"
+    ;;
+  logs)    need_root; shift; $DC logs --tail "${1:-200}" -f ;;
+  start)   need_root; $DC up -d --pull never ;;
+  stop)    need_root; $DC stop ;;
+  restart) need_root; $DC restart ;;
+  token)   need_root; getv INSTALLER_TOKEN ;;
+  reset-token)
+    need_root
+    new="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+    sed -i "s/^INSTALLER_TOKEN=.*/INSTALLER_TOKEN=$new/" "$BASE/.env"
+    $DC up -d --force-recreate --pull never
+    echo "New token: $new"
+    ;;
+  uninstall)
+    need_root
+    read -r -p "Remove the installer container and image? Uploaded bundles, logs and Docker itself are kept. [y/N] " a
+    [[ "$a" =~ ^[Yy]$ ]] || exit 0
+    $DC down || true
+    docker rmi "intellivision-installer:$(getv INSTALLER_VERSION)" 2>/dev/null || true
+    rm -f /usr/local/bin/installer-ctl
+    echo "Removed. Data left in $BASE (delete it manually if you want it gone)."
+    ;;
+  *)
+    echo "usage: installer-ctl {status|logs [N]|start|stop|restart|token|reset-token|uninstall}"
+    ;;
+esac
