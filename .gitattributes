@@ -1,0 +1,6 @@
+* text=auto
+*.sh text eol=lf
+deploy/install.sh text eol=lf
+deploy/installer-ctl text eol=lf
+samples/stubs/* text eol=lf
+*.tgz binary
