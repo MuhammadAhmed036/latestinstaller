@@ -66,7 +66,7 @@ chmod 600 "$TOP/.env"`
   const postCmd = sys?.postDeploy
     ? `echo
 echo "── post-deploy checks"
-( cd ${q(sys.cwd ?? sys.installDir ?? "/")} && bash -c ${q(sys.postDeploy)} ) || echo "post-deploy step did not finish (the deploy itself succeeded)"`
+( cd ${q(sys.cwd ?? sys.installDir ?? "/")} 2>/dev/null || cd /; DEPLOY_OUT="$OUTF" bash -c ${q(sys.postDeploy)} ) || echo "post-deploy step did not finish (the deploy itself succeeded)"`
     : "";
 
   return `
@@ -131,7 +131,11 @@ ${stageCmd}
 step install
 cd "$TOP"
 ${envCmd}
+OUTF="$WORK/last-deploy-output.log"
+: > "$OUTF"
+{
 ${installCmd}
+} 2>&1 | tee "$OUTF"
 
 step finish
 ${opts.cleanup ? `echo "Removing extracted files"; rm -rf "$DEST"` : `echo "Extracted files kept at $DEST"`}

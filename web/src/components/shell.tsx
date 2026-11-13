@@ -10,7 +10,7 @@ import { ManageView } from "./manage-view";
 import { UploadView } from "./upload-view";
 import { Spinner, cn } from "./ui";
 
-export type HostInfo = { version: string; hostname?: string; os?: string; ip?: string; docker?: string; free?: string; root?: string };
+export type HostInfo = { version: string; auth?: boolean; hostname?: string; os?: string; ip?: string; docker?: string; free?: string; root?: string };
 
 /** Each registered system becomes a tab (from systems.json). History is always last. */
 const HISTORY = "history";
@@ -114,7 +114,7 @@ export function Shell() {
               <span className="max-w-[110px] truncate font-medium">{host?.hostname || "this VM"}</span>
               {host?.ip && <span className="hidden font-mono text-faint xl:inline">{host.ip}</span>}
             </div>
-            <button
+            {host?.auth && <button
               aria-label="Sign out"
               title="Sign out"
               onClick={async () => {
@@ -124,7 +124,7 @@ export function Shell() {
               className="cursor-pointer text-muted hover:text-fg"
             >
               <LogOut className="size-4" />
-            </button>
+            </button>}
           </div>
         </div>
       </header>

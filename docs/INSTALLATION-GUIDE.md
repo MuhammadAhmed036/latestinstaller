@@ -84,20 +84,22 @@ Pehli command `...tar: OK` likhe to file sahi hai. Agar `FAILED` aaye to file do
 Installer is running.
 
   URL      http://192.168.1.50:8088
-  Token    5c8567725b8b6d9a...(lamba token)
+  Login    none (opens directly)
   Packages /opt/intellivision-installer/packages
 ```
 
-**Is `Token` ko copy karke kahin safe rakh lo.** Browser mein login ke liye chahiye hoga.
+**Installer bina login/token ke seedha khulta hai.** Koi token copy nahi karna.
 
 Agar port 8088 pehle se kisi aur ne le rakha ho to:
 ```bash
 sudo bash install.sh --port 8090
 ```
 
+Agar kabhi token wala login chahiye ho (jaise VM ka network sab ke liye khula ho): `sudo bash install.sh --auth` ya baad mein `sudo installer-ctl set --auth on`. Token phir `sudo installer-ctl token` se milta hai.
+
 ## 5. Step 3: Browser mein kholo
 
-Apne PC ke browser mein `http://<VM_IP>:8088` kholo aur upar wala **Token** paste karke sign in karo.
+Apne PC ke browser mein `http://<VM_IP>:8088` kholo. Seedha installer khul jata hai, login nahi.
 
 (Agar page na khule to VM ka firewall dekho: `sudo ufw allow 8088/tcp`. Installer ufw active hone par ye khud kar deta hai.)
 
@@ -142,6 +144,20 @@ Deploy ka tareeka (har tab mein wahi):
 
 **Systems ka tarteeb:** agar RTSP Engine ya Inference Engine ko NATS chahiye to pehle **NATS** deploy karo, phir baaki.
 
+## 7b. Deploy ke ant mein har system ka login khud dikhta hai
+
+Har deploy ke log ke ant mein ek **ACCESS** box aata hai, jisme us system ka URL, username, password (ya token) aur agla kaam likha hota hai:
+
+| System | Box mein kya dikhta hai |
+|---|---|
+| **Streaming Server** | URL, browser login `admin / admin` (pehli baar), API login (sirf scripts ke liye) |
+| **NATS** | NATS URL (`nats://TOKEN@IP:4222`) aur token |
+| **RTSP Engine** | URL aur `admin` ka password (ek baar dikhta hai) |
+| **Inference Engine** | Configurator (18090) ka login, Event viewer (18088) ka token, database ka password |
+| **Website (Dashboard)** | URL aur jo login installer ne print kiya, aur Settings mein kya daalna hai |
+
+Ye box History tab mein bhi hamesha dekh sakte ho. Password copy karke safe rakh lo.
+
 ## 8. Deploy ke baad: Manage
 
 Har system ke tab mein neeche **Manage** hai: Status, Health, Logs, Restart, Stop, Start, Apply .env, aur `.env` file edit karne ka editor. History tab mein har deploy ka poora log milta hai.
@@ -152,11 +168,16 @@ Har system ke tab mein neeche **Manage** hai: Status, Health, Logs, Restart, Sto
 
 ```bash
 sudo installer-ctl status        # installer chal raha hai ya nahi
+sudo installer-ctl config        # abhi ki settings (port, bind, login on/off, URL)
+sudo installer-ctl set --port 8090 --bind 0.0.0.0   # settings badalna (khud naye sire se start hota hai)
+sudo installer-ctl set --auth on # token wala login on karna (off se band)
+sudo installer-ctl restart       # settings dobara lagakar start (hamesha latest .env use hoti hai)
 sudo installer-ctl logs          # installer ke logs
-sudo installer-ctl restart       # restart
-sudo installer-ctl token         # token dobara dekhna
-sudo installer-ctl reset-token   # naya token banana
+sudo installer-ctl token         # token (sirf tab kaam ka jab login on ho)
 sudo installer-ctl uninstall     # installer hatana (aapki bundles aur Docker rehte hain)
+
+# VM ka IP badal jaye to: agar installer 0.0.0.0 par hai (default) to kuch karna nahi.
+# Agar kisi khas IP par bind kiya tha to:  sudo installer-ctl set --bind <NAYA_IP>
 ```
 
 ## 10. Masle aur hal
@@ -166,7 +187,8 @@ sudo installer-ctl uninstall     # installer hatana (aapki bundles aur Docker re
 | `sha256sum -c` mein `FAILED` | File adhuri copy hui. `scp` dobara chalao. |
 | `scp` mein `Permission denied` | Username ya password galat hai. Ya VM par SSH band hai. |
 | Browser mein page nahi khulta | IP / port check karo. `sudo ufw allow 8088/tcp`. `sudo installer-ctl status` mein Health `healthy` hona chahiye. |
-| Token bhool gaye | `sudo installer-ctl token` |
+| Installer ki settings badalni hain (port / IP / login) | `sudo installer-ctl set --port 8090 --bind 0.0.0.0`, dekhne ke liye `sudo installer-ctl config` |
+| `installer-ctl` ya installer ki `.env` file gayab / error | `sudo installer-ctl config` khud `.env` dobara bana deta hai. Ya `sudo bash install.sh` dobara chalao |
 | `port 8088 is already in use` | `sudo bash install.sh --port 8090` |
 | `less than 3 GB free on /opt` | VM mein jagah banao ya bada disk lagao. |
 | `systemd is required` | VM mein systemd nahi hai. Ubuntu server image use karo. |
@@ -174,18 +196,18 @@ sudo installer-ctl uninstall     # installer hatana (aapki bundles aur Docker re
 | Docker pehle se kharab hai (daemon nahi chalta) | Script usay chhedti nahi. `sudo systemctl start docker` karke dobara chalao. |
 | Streaming Server ka browser login `Invalid username or password` deta hai | **Browser login aur API login alag hain.** Browser mein pehli baar **admin / admin** chalta hai (phir naya password set karna padta hai). Deploy ke ant mein jo `API login admin / ...` likha aata hai wo sirf scripts/API ke liye hai, browser ke liye nahi. 5 galat koshishon ke baad account 15 minute ke liye lock ho jata hai: Streaming Server tab > Manage > **Unlock admin**. Password bhool gaye to VM par: `sudo docker exec -it $(sudo docker ps --format '{{.Names}}' \| grep -m1 gelecek-streaming-server) python3 /usr/local/bin/useradmin.py reset-password admin` |
 | RTSP Engine ke browser login ka password nahi pata / `Invalid username or password` | Username **admin** hai. Naye installer se deploy karo to password deploy ke ant mein "Admin login : admin / ..." likha aata hai. Pehle ke deploy ke liye: RTSP Engine tab > Manage > **Reset admin password** (password log mein aata hai, pehle sign-in par badalna padta hai). Terminal se: `sudo docker exec rtsp-engine /app/rtsp-engine admin reset-password admin`. 5 galat koshishon ke baad lock ho to **Unlock admin**. |
-| Inference Engine (port 18090 Configurator) ka password nahi pata | Username **admin**. Password deploy ke log mein ek baar likha aata hai. Inference Engine tab ke upar **Login hint** kholo ya VM par: `sudo grep -h "Admin login" /opt/intellivision-installer/logs/*.log \| tail -1` |
+| Inference Engine (port 18090 Configurator) ka password nahi pata | Username **admin**. Password deploy ke log mein ek baar likha aata hai. Inference Engine tab ke upar **Login hint** kholo ya VM par: `sudo grep -h "Admin login.*generated" /opt/intellivision-installer/logs/*.log \| tail -1` |
 | Website deploy par `the dashboard port 3000 must differ from the internal ports` | Dashboard port 3000 mat rakho. Installer ka naya version Website tab mein port 3001 deta hai (form se badal bhi sakte ho). Purana installer ho to naya `.tar` dobara lagao (Section 11). |
 | Deploy mein "Not enough free disk space" | VM mein jagah banao (bundle ke size ka lagbhag 3 guna chahiye). |
 | Upload beech mein ruk gaya | Wahi file dobara chuno. Jitna ja chuka hai wahan se aage chalega. |
 
 ## 11. Installer ko upgrade karna
 
-Naya `.tar` isi tarah copy karo aur dobara `sudo bash install.sh` chalao. **Token, uploaded bundles aur History sab bache rehte hain.**
+Naya `.tar` isi tarah copy karo aur dobara `sudo bash install.sh` chalao. **Settings (port, bind), uploaded bundles aur History sab bache rehte hain**, aur installer hamesha nayi image aur latest settings ke saath start hota hai.
 
 ## 12. Security
 
-- Installer VM par **root** power se commands chalata hai (isliye woh sirf token se khulta hai). **Token kisi ko mat do.**
+- Installer VM par **root** power se commands chalata hai, aur ab **bina login** ke khulta hai. Isliye isay sirf **private network** par rakho, jahan sirf apni team ke log pahunch sakte hon. Zaroorat ho to `sudo installer-ctl set --auth on` se token wala login lagao.
 - Port 8088 ko **public internet par expose mat karo.** Sirf private network par rakho. Sirf apne PC se kholna ho to:
   ```bash
   sudo bash install.sh --bind 127.0.0.1

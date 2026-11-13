@@ -1,5 +1,5 @@
 import { isAuthed, json, unauthorized } from "@/lib/auth";
-import { VERSION, WORK_DIR } from "@/lib/config";
+import { AUTH_ON, VERSION, WORK_DIR } from "@/lib/config";
 import { q, runHost } from "@/lib/host";
 
 export const dynamic = "force-dynamic";
@@ -21,5 +21,5 @@ echo "root=$([ "$(id -u)" -eq 0 ] && echo 1 || echo 0)"`,
     const i = l.indexOf("=");
     if (i > 0) info[l.slice(0, i)] = l.slice(i + 1).trim();
   }
-  return json({ version: VERSION, ...info });
+  return json({ version: VERSION, auth: AUTH_ON, ...info });
 }

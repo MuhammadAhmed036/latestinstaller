@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { TOKEN } from "./config";
+import { AUTH_ON, TOKEN } from "./config";
 
 export const COOKIE = "ivi_session";
 
@@ -15,7 +15,7 @@ export function checkToken(input: string): boolean {
 }
 
 export function isAuthed(req: Request): boolean {
-  if (process.env.INSTALLER_NO_AUTH === "1") return true;
+  if (!AUTH_ON || process.env.INSTALLER_NO_AUTH === "1") return true;
   if (!TOKEN) return false;
   const raw = req.headers.get("cookie") ?? "";
   const m = raw.split(/;\s*/).find((c) => c.startsWith(`${COOKIE}=`));

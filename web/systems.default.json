@@ -118,7 +118,8 @@
           "pattern": "^[A-Za-z_]+(/[A-Za-z0-9_+-]+)+$",
           "patternMsg": "An IANA zone like Asia/Karachi"
         }
-      ]
+      ],
+      "postDeploy": "IP=$(hostname -I 2>/dev/null | awk '{print $1}'); [ -n \"$IP\" ] || IP=\"<vm-ip>\"\ng() { grep -m1 \"^$1=\" .env 2>/dev/null | cut -d= -f2- | tr -d '\\r'; }\nCLEAN=\"\"; if [ -n \"$DEPLOY_OUT\" ] && [ -f \"$DEPLOY_OUT\" ]; then CLEAN=$(sed 's/\\x1b\\[[0-9;]*[A-Za-z]//g' \"$DEPLOY_OUT\"); fi\nbar() { echo; echo \"================ ACCESS: $1 ================\"; }\nendbar() { echo \"==============================================================\"; }\nAP=$(g APP_PORT); [ -n \"$AP\" ] || AP=3001\nif [ \"$(g HTTPS_ENABLED)\" = 1 ]; then SC=https; else SC=http; fi\nCR=$(printf '%s\\n' \"$CLEAN\" | grep -iE '(admin|password|passwd|login|sign.?in|credential|username)' | grep -viE 'docker|warn|error|pull|compose|migrat|\\.sh' | tail -8)\nbar \"Dashboard (Website)\"\necho \"Open          : $SC://$IP:$AP\"\nif [ -n \"$CR\" ]; then echo \"Login lines printed by the installer:\"; printf '%s\\n' \"$CR\" | sed 's/^ */  /'; else echo \"Login         : not printed by the installer. Open the page; if it asks to create the first administrator, do that. Otherwise see History.\"; fi\necho \"Next          : sign in > Settings > Connections, then set:\"\necho \"  Streams API / Camera feed : http://<streaming-server-ip>:8000 (+ its API key)\"\necho \"  Detection API             : http://<inference-ip>:18088 (+ VIEWER_API_TOKEN from the Inference summary)\"\necho \"  Team database             : postgres://dashboard_sync:<password>@<inference-ip>:15432/<db>\"\nendbar"
     },
     {
       "id": "gelecek-streaming-server",
@@ -277,7 +278,8 @@
           "Browser login on a fresh install: admin / admin (you must choose a new password straight away).",
           "The API user/password from the deploy log is for scripts only, not for the browser."
         ]
-      }
+      },
+      "postDeploy": "IP=$(hostname -I 2>/dev/null | awk '{print $1}'); [ -n \"$IP\" ] || IP=\"<vm-ip>\"\ng() { grep -m1 \"^$1=\" .env 2>/dev/null | cut -d= -f2- | tr -d '\\r'; }\nCLEAN=\"\"; if [ -n \"$DEPLOY_OUT\" ] && [ -f \"$DEPLOY_OUT\" ]; then CLEAN=$(sed 's/\\x1b\\[[0-9;]*[A-Za-z]//g' \"$DEPLOY_OUT\"); fi\nbar() { echo; echo \"================ ACCESS: $1 ================\"; }\nendbar() { echo \"==============================================================\"; }\nP=$(g BCTL_PORT); [ -n \"$P\" ] || P=8000\nbar \"Streaming Server\"\necho \"Web UI        : http://$IP:$P\"\necho \"Web login     : admin / admin   (fresh install; you must choose a new password at the first sign-in. If it was changed already, use that one)\"\necho \"API login     : $(g ROOT_USER) / $(g ROOT_PASS)   (for scripts and API clients only, NOT the browser login)\"\necho \"Locked out?   : Manage > Unlock admin\"\nendbar"
     },
     {
       "id": "natv2",
@@ -426,7 +428,8 @@
         "sandbox_app.py",
         "receiver.py",
         "docker-compose.yml"
-      ]
+      ],
+      "postDeploy": "IP=$(hostname -I 2>/dev/null | awk '{print $1}'); [ -n \"$IP\" ] || IP=\"<vm-ip>\"\ng() { grep -m1 \"^$1=\" .env 2>/dev/null | cut -d= -f2- | tr -d '\\r'; }\nCLEAN=\"\"; if [ -n \"$DEPLOY_OUT\" ] && [ -f \"$DEPLOY_OUT\" ]; then CLEAN=$(sed 's/\\x1b\\[[0-9;]*[A-Za-z]//g' \"$DEPLOY_OUT\"); fi\nbar() { echo; echo \"================ ACCESS: $1 ================\"; }\nendbar() { echo \"==============================================================\"; }\nT=$(g NATS_AUTH_TOKEN)\nbar \"NATS\"\necho \"NATS URL      : nats://$T@$IP:4222   (use this exact form; no user name, no 'root:')\"\necho \"Token         : $T\"\necho \"Used by       : RTSP Engine (Connect to NATS) and the Inference Engine NATS URL\"\nendbar"
     },
     {
       "id": "rtsp-engine",
@@ -743,7 +746,7 @@
         "rtsp-engine-ctl",
         "nats-deploy/docker-compose.yml"
       ],
-      "postDeploy": "C=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || exit 0\necho \"Waiting for the engine to become healthy (up to 3 minutes)...\"\nok=0; for i in $(seq 1 90); do s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \"$C\" 2>/dev/null); [ \"$s\" = healthy ] && { ok=1; break; }; sleep 2; done\n[ \"$ok\" = 1 ] || { echo \"Engine is not healthy yet. Set the admin password later: Manage > Reset admin password\"; exit 0; }\nPW=$(od -An -N15 -tx1 /dev/urandom | tr -d ' \\n')\nR=$(printf '%s\\n' \"$PW\" | docker exec -i \"$C\" /app/rtsp-engine admin bootstrap --password-stdin 2>/dev/null | tail -1 || true)\ncase \"$R\" in created|set) echo \"Admin login : admin / $PW   (shown once, must be changed at the first sign-in)\";; unchanged) echo \"Admin account already set up, left as it is\";; *) echo \"Could not prepare the admin account. Use Manage > Reset admin password\";; esac",
+      "postDeploy": "IP=$(hostname -I 2>/dev/null | awk '{print $1}'); [ -n \"$IP\" ] || IP=\"<vm-ip>\"\ng() { grep -m1 \"^$1=\" .env 2>/dev/null | cut -d= -f2- | tr -d '\\r'; }\nCLEAN=\"\"; if [ -n \"$DEPLOY_OUT\" ] && [ -f \"$DEPLOY_OUT\" ]; then CLEAN=$(sed 's/\\x1b\\[[0-9;]*[A-Za-z]//g' \"$DEPLOY_OUT\"); fi\nbar() { echo; echo \"================ ACCESS: $1 ================\"; }\nendbar() { echo \"==============================================================\"; }\nC=$(docker ps --format '{{.Names}}' | grep -m1 '^rtsp-engine'); [ -n \"$C\" ] || exit 0\nHP=$(g HOST_PORT); [ -n \"$HP\" ] || HP=8080\necho \"Waiting for the engine to become healthy (up to 3 minutes)...\"\nLOGIN=\"admin / (not prepared. Use Manage > Reset admin password)\"\nok=0; for i in $(seq 1 90); do s=$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' \"$C\" 2>/dev/null); [ \"$s\" = healthy ] && { ok=1; break; }; sleep 2; done\nif [ \"$ok\" = 1 ]; then\n  PW=$(od -An -N15 -tx1 /dev/urandom | tr -d ' \\n')\n  R=$(printf '%s\\n' \"$PW\" | docker exec -i \"$C\" /app/rtsp-engine admin bootstrap --password-stdin 2>/dev/null | tail -1 || true)\n  case \"$R\" in created|set) LOGIN=\"admin / $PW   (shown once, must be changed at the first sign-in)\";; unchanged) LOGIN=\"admin / (already set earlier, left as it is. Forgot it? Manage > Reset admin password)\";; esac\nelse LOGIN=\"admin / (engine was not healthy in time. Use Manage > Reset admin password)\"; fi\nbar \"RTSP Engine\"\necho \"Web UI        : http://$IP:$HP\"\necho \"Login         : $LOGIN\"\necho \"Then          : Connect to NATS > URL nats://$IP:4222, token in the username field, password empty\"\nendbar",
       "loginHint": {
         "title": "Login hint: RTSP Engine web page",
         "lines": [
@@ -959,8 +962,9 @@
           "Username: admin, unless you chose another one in the form.",
           "Password: if you left the password empty at deploy, one was generated and shown once in the deploy log. Run this command on the VM to print it:"
         ],
-        "command": "sudo grep -h \"Admin login\" /opt/intellivision-installer/logs/*.log | tail -1"
-      }
+        "command": "sudo grep -h \"Admin login.*generated\" /opt/intellivision-installer/logs/*.log | tail -1"
+      },
+      "postDeploy": "IP=$(hostname -I 2>/dev/null | awk '{print $1}'); [ -n \"$IP\" ] || IP=\"<vm-ip>\"\ng() { grep -m1 \"^$1=\" .env 2>/dev/null | cut -d= -f2- | tr -d '\\r'; }\nCLEAN=\"\"; if [ -n \"$DEPLOY_OUT\" ] && [ -f \"$DEPLOY_OUT\" ]; then CLEAN=$(sed 's/\\x1b\\[[0-9;]*[A-Za-z]//g' \"$DEPLOY_OUT\"); fi\nbar() { echo; echo \"================ ACCESS: $1 ================\"; }\nendbar() { echo \"==============================================================\"; }\nDP=$(g DASHBOARD_PORT); [ -n \"$DP\" ] || DP=18088\nCP=$(g CONFIGURATOR_PORT); [ -n \"$CP\" ] || CP=18090\nADM=$(printf '%s\\n' \"$CLEAN\" | grep 'Admin login' | tail -1 | sed 's/^ *//; s/^Admin login *//')\n[ -n \"$ADM\" ] || ADM=\"admin / (the password you typed in the form. It was not generated, so it is not in the log)\"\nbar \"Inference Engine\"\necho \"Configurator  : http://$IP:$CP   (models, classes, metrics)\"\necho \"  Login       : $ADM\"\necho \"Event viewer  : http://$IP:$DP   (the 'Detection API' that the Dashboard reads)\"\necho \"  Token       : $(g VIEWER_API_TOKEN)   (a token only, no user name or password)\"\necho \"Database      : $IP:$(g POSTGRES_PUBLIC_PORT)  user $(g POSTGRES_USER)  password $(g POSTGRES_PASSWORD)\"\necho \"NATS          : $(g NATS_URL | sed -E 's#(nats://)[^@]*@#\\1****@#')\"\nendbar"
     }
   ]
 }

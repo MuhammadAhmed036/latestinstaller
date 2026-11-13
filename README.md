@@ -21,7 +21,7 @@ cd vm-installer_*/
 sudo bash install.sh            # optional: --port 8090  --bind 127.0.0.1
 ```
 
-`install.sh` checks the bundle's checksums, installs iptables and Docker from the bundled files if they are missing, loads the image, starts it and prints the URL and the access token. Docker and the installer start on boot. Nothing is downloaded. Re-running upgrades in place and keeps the token, uploaded bundles and history. If Docker is already installed and working it is left alone.
+`install.sh` checks the bundle's checksums, installs iptables and Docker from the bundled files if they are missing, loads the image, starts it and prints the URL. The installer opens without a login (see Security). Docker and the installer start on boot. Nothing is downloaded. Re-running upgrades in place and keeps the token, uploaded bundles and history. If Docker is already installed and working it is left alone.
 
 Tested on a blank Ubuntu 24.04 (no Docker, iptables or curl, network disabled): full install, upload and deploy worked.
 
@@ -30,7 +30,7 @@ Tested on a blank Ubuntu 24.04 (no Docker, iptables or curl, network disabled): 
 Each registered system has its own tab (Website, Streaming Server, ...).
 
 1. Copy the release bundle and its `.sha256` file to `/opt/intellivision-installer/packages/`.
-2. Open `http://<vm-ip>:8088`, sign in with the token, open the system tab. (Or upload the files from your PC in the Upload tab.)
+2. Open `http://<vm-ip>:8088` (no login), open the system tab. (Or upload the files from your PC in the Upload tab.)
 3. The bundle is found automatically. Fill the form if the system has one, review the checks, press Deploy.
 
 The installer runs, as root on the VM: verify, extract to `/opt/intellivision-installer/work/`, find the entry script (`install.sh` / `deploy.sh`, order is per system), run it.
@@ -57,8 +57,11 @@ Open the **Upload** tab, drop or choose any number of `.tar` bundles and `.sha25
 ## Day-to-day
 
 ```bash
-sudo installer-ctl status | logs | restart | stop | start | token | reset-token | uninstall
+sudo installer-ctl status | config | restart | logs | stop | start | uninstall
+sudo installer-ctl set --port 8090 --bind 0.0.0.0 --auth off   # change the configuration; recreates the container
 ```
+
+`/opt/intellivision-installer/.env` is the single source of truth (`INSTALLER_PORT`, `INSTALLER_BIND`, `INSTALLER_AUTH`, `INSTALLER_TOKEN`). `installer-ctl` recreates it with defaults if it is missing, and `restart` always recreates the container so the newest configuration is used.
 
 ## Adding another system
 
@@ -75,7 +78,7 @@ Edit `/opt/intellivision-installer/data/systems.json` on the VM (no rebuild need
 
 ## Security
 
-The container is `privileged` with `pid: host` so it can run install scripts on the VM. Access needs the token. Keep the port on a private network or firewall it; use `--bind 127.0.0.1` plus an SSH tunnel if in doubt.
+The container is `privileged` with `pid: host` so it can run install scripts on the VM. There is no login by default (`INSTALLER_AUTH=off`), so keep the port on a private network or firewall it. `sudo installer-ctl set --auth on` (or `install.sh --auth`) requires the token again; use `--bind 127.0.0.1` plus an SSH tunnel if in doubt.
 
 ## Development
 

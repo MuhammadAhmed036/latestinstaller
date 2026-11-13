@@ -7,7 +7,26 @@ cd "$BASE" 2>/dev/null || { echo "installer is not installed ($BASE missing)" >&
 
 DC="docker compose"
 need_root() { [ "$(id -u)" -eq 0 ] || { echo "run with sudo" >&2; exit 1; }; }
-getv() { grep -E "^$1=" "$BASE/.env" | head -n1 | cut -d= -f2-; }
+getv() { grep -E "^$1=" "$BASE/.env" 2>/dev/null | head -n1 | cut -d= -f2- || true; }
+# The .env is the single source of truth. Recreate it with defaults if it is ever missing, and
+# fill in any key an older version did not write, so every command always works.
+ensure_env() {
+  local f="$BASE/.env" v tok
+  [ -f "$f" ] || { : > "$f"; chmod 600 "$f"; }
+  v="$(cat "$BASE/VERSION" 2>/dev/null || echo 1.0.0)"
+  setdef() { grep -q "^$1=" "$f" || echo "$1=$2" >> "$f"; }
+  tok="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+  setdef INSTALLER_VERSION "$v"; setdef INSTALLER_PORT 8088; setdef INSTALLER_BIND 0.0.0.0
+  setdef INSTALLER_AUTH off; setdef INSTALLER_TOKEN "$tok"
+}
+setkv() { # setkv KEY VALUE  (replace or add in .env)
+  if grep -q "^$1=" "$BASE/.env"; then sed -i "s|^$1=.*|$1=$2|" "$BASE/.env"; else echo "$1=$2" >> "$BASE/.env"; fi
+}
+apply() { # recreate the container so it runs with the current .env
+  ensure_env
+  $DC up -d --force-recreate --pull never
+  echo "Applied. URL: http://$(hostname -I | awk '{print $1}'):$(getv INSTALLER_PORT)   (login: $( [ "$(getv INSTALLER_AUTH)" = on ] && echo token || echo none ))"
+}
 health() { docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$CNAME" 2>/dev/null || echo "not running"; }
 
 case "${1:-help}" in
@@ -18,14 +37,39 @@ case "${1:-help}" in
     echo "Health: $(health)"
     ;;
   logs)    need_root; shift; $DC logs --tail "${1:-200}" -f ;;
-  start)   need_root; $DC up -d --pull never ;;
+  start)   need_root; ensure_env; $DC up -d --pull never ;;
   stop)    need_root; $DC stop ;;
-  restart) need_root; $DC restart ;;
-  token)   need_root; getv INSTALLER_TOKEN ;;
+  restart|apply) need_root; apply ;;   # recreates, so the newest configuration is always used
+  token)   need_root; ensure_env; getv INSTALLER_TOKEN; [ "$(getv INSTALLER_AUTH)" = on ] || echo "(login is OFF, the token is not asked for. Turn it on:  installer-ctl set --auth on)" >&2 ;;
+  config)
+    need_root; ensure_env
+    echo "Version : $(getv INSTALLER_VERSION)"
+    echo "Port    : $(getv INSTALLER_PORT)"
+    echo "Bind    : $(getv INSTALLER_BIND)   (0.0.0.0 = every network address of this VM)"
+    echo "Login   : $( [ "$(getv INSTALLER_AUTH)" = on ] && echo "ON (token)" || echo OFF )"
+    echo "URL     : http://$(hostname -I | awk '{print $1}'):$(getv INSTALLER_PORT)"
+    ;;
+  set)
+    need_root; ensure_env; shift
+    [ $# -gt 0 ] || { echo "usage: installer-ctl set [--port N] [--bind IP] [--auth on|off]" >&2; exit 1; }
+    while [ $# -gt 0 ]; do
+      case "$1" in
+        --port) [[ "${2:-}" =~ ^[0-9]+$ ]] && [ "$2" -ge 1 ] && [ "$2" -le 65535 ] || { echo "invalid port: ${2:-}" >&2; exit 1; }
+                setkv INSTALLER_PORT "$2"; shift 2 ;;
+        --bind) [[ "${2:-}" =~ ^[0-9.]+$ ]] || { echo "invalid address: ${2:-} (use 0.0.0.0 or the VM's IP)" >&2; exit 1; }
+                setkv INSTALLER_BIND "$2"; shift 2 ;;
+        --auth) [ "${2:-}" = on ] || [ "${2:-}" = off ] || { echo "--auth needs on or off" >&2; exit 1; }
+                setkv INSTALLER_AUTH "$2"; shift 2 ;;
+        *) echo "unknown option: $1" >&2; exit 1 ;;
+      esac
+    done
+    if command -v ufw >/dev/null 2>&1 && ufw status 2>/dev/null | grep -q "Status: active"; then ufw allow "$(getv INSTALLER_PORT)/tcp" >/dev/null || true; fi
+    apply
+    ;;
   reset-token)
     need_root
     new="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
-    sed -i "s/^INSTALLER_TOKEN=.*/INSTALLER_TOKEN=$new/" "$BASE/.env"
+    ensure_env; setkv INSTALLER_TOKEN "$new"
     $DC up -d --force-recreate --pull never
     echo "New token: $new"
     ;;
@@ -39,6 +83,6 @@ case "${1:-help}" in
     echo "Removed. Data left in $BASE (delete it manually if you want it gone)."
     ;;
   *)
-    echo "usage: installer-ctl {status|logs [N]|start|stop|restart|token|reset-token|uninstall}"
+    echo "usage: installer-ctl {status|config|set [--port N] [--bind IP] [--auth on|off]|restart|logs [N]|start|stop|token|reset-token|uninstall}"
     ;;
 esac

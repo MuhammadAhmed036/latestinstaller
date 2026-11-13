@@ -8,6 +8,8 @@ export const WORK_DIR = process.env.WORK_DIR || path.posix.join(BASE_DIR, "work"
 export const LOGS_DIR = process.env.LOGS_DIR || path.posix.join(BASE_DIR, "logs");
 export const DATA_DIR = process.env.DATA_DIR || path.posix.join(BASE_DIR, "data");
 export const TOKEN = process.env.INSTALLER_TOKEN || "";
+/** The installer opens without a login unless INSTALLER_AUTH=on (then the token is required). */
+export const AUTH_ON = process.env.INSTALLER_AUTH === "on";
 export const VERSION = process.env.INSTALLER_VERSION || "dev";
 /** "host" = nsenter into PID 1 namespaces (container), "local" = plain bash (dev). */
 export const EXEC_MODE = process.env.HOST_EXEC || "host";

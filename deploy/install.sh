@@ -2,16 +2,18 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # VM Installer – fully OFFLINE setup.
 #
-#   sudo bash install.sh [--port 8088] [--bind 0.0.0.0]
+#   sudo bash install.sh [--port 8088] [--bind 0.0.0.0] [--auth]
+#     (the installer opens WITHOUT a login. --auth turns the access token on)
 #
 # Turns a blank Ubuntu (22.04 / 24.04, x86-64) machine with NO internet into a running installer:
 #   1. checks the bundle's own checksums, the CPU, systemd and free disk space
 #   2. installs Docker Engine + the Compose plugin from files bundled here (docker-offline/),
 #      including iptables if the machine lacks it. Skipped when Docker already works.
 #   3. loads the installer image (image.tar.gz) and starts it (restart: unless-stopped)
-#   4. prints the URL and the access token
+#   4. prints the URL
 #
-# Nothing is downloaded. Safe to re-run: the token, uploaded bundles and history are kept.
+# Nothing is downloaded. Safe to re-run: your settings, uploaded bundles and history are kept.
+# Re-run it (or use  installer-ctl set --port N --bind IP) any time to change the configuration.
 # ─────────────────────────────────────────────────────────────────────────────
 set -Eeuo pipefail
 
@@ -20,6 +22,7 @@ BASE=/opt/intellivision-installer
 CNAME=intellivision-installer
 PORT=""
 BIND=""
+AUTH=""
 
 c_ok=$'\033[32m'; c_warn=$'\033[33m'; c_err=$'\033[31m'; c_dim=$'\033[2m'; c_off=$'\033[0m'
 say()  { printf '%s\n' "$*"; }
@@ -33,7 +36,9 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --port) PORT="${2:-}"; shift 2 ;;
     --bind) BIND="${2:-}"; shift 2 ;;
-    -h|--help) sed -n '2,14p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    --auth) AUTH=on; shift ;;
+    --no-auth) AUTH=off; shift ;;
+    -h|--help) sed -n '2,16p' "${BASH_SOURCE[0]}"; exit 0 ;;
     *) die "unknown option: $1" ;;
   esac
 done
@@ -97,6 +102,8 @@ TOKEN="$(get INSTALLER_TOKEN)"
 [ -n "$TOKEN" ] || TOKEN="$(head -c 24 /dev/urandom | od -An -tx1 | tr -d ' \n')"
 PORT="${PORT:-$(get INSTALLER_PORT)}"; PORT="${PORT:-8088}"
 BIND="${BIND:-$(get INSTALLER_BIND)}"; BIND="${BIND:-0.0.0.0}"
+AUTH="${AUTH:-$(get INSTALLER_AUTH)}"; AUTH="${AUTH:-off}"
+[ "$AUTH" = on ] || [ "$AUTH" = off ] || die "invalid auth value: $AUTH (on or off)"
 [[ "$PORT" =~ ^[0-9]+$ ]] && [ "$PORT" -ge 1 ] && [ "$PORT" -le 65535 ] || die "invalid port: $PORT"
 if { ss -ltn 2>/dev/null || true; } | awk '{print $4}' | grep -qE "[:.]${PORT}\$" && ! docker ps --format '{{.Names}}' | grep -qx "$CNAME"; then
   die "port $PORT is already in use. Pick another:  sudo bash install.sh --port 8090"
@@ -105,6 +112,7 @@ fi
 INSTALLER_VERSION=$VERSION
 INSTALLER_PORT=$PORT
 INSTALLER_BIND=$BIND
+INSTALLER_AUTH=$AUTH
 INSTALLER_TOKEN=$TOKEN
 EOF
 )
@@ -144,9 +152,9 @@ cat <<EOF
 ${c_ok}Installer is running.${c_off}
 
   URL      http://$IP:$PORT
-  Token    $TOKEN
+$( [ "$AUTH" = on ] && echo "  Token    $TOKEN" || echo "  Login    none (opens directly). Restrict access with the firewall, or:  sudo installer-ctl set --auth on" )
   Packages $BASE/packages   ${c_dim}(upload bundles from the Upload tab, or copy them here)${c_off}
 
-  Manage:  sudo installer-ctl status | logs | restart | token | uninstall
+  Manage:  sudo installer-ctl status | config | set --port N --bind IP | restart | logs | uninstall
 
 EOF
